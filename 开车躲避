@@ -1,0 +1,167 @@
+import tkinter as tk
+from tkinter import messagebox
+import pygame
+import random
+
+# 使用tkinter显示游戏信息
+def show_game_info():
+    # 创建一个tkinter窗口
+    root = tk.Tk()
+    # 将窗口隐藏，因为我们只需要弹窗
+    root.withdraw()
+
+    # 游戏信息和作者
+    game_info = """
+    操控方法:
+    - 左箭头: 向左移动
+    - 右箭头: 向右移动
+
+
+    操控红色的躲避绿色的
+    
+    有bug（应该有）
+    
+    game over后再来一局按钮上的文字显示不出来
+
+    B站up：麒麟大大大西瓜
+    """
+    
+    # 弹出一个消息框显示游戏信息
+    messagebox.showinfo("游戏信息", game_info)
+
+    # 关闭tkinter窗口
+    root.destroy()
+
+# 显示游戏操控方法和作者信息
+show_game_info()
+
+# 初始化pygame
+pygame.init()
+
+# 游戏窗口大小
+screen_width = 480
+screen_height = 600
+
+# 创建游戏窗口
+screen = pygame.display.set_mode((screen_width, screen_height))
+pygame.display.set_caption("飞机大战")
+
+# 定义颜色
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+WHITE = (255, 255, 255)
+
+# 加载玩家飞机图像
+player_normal_img = pygame.Surface((50, 50))
+player_normal_img.fill((255, 0, 0))
+player_injured_img = pygame.Surface((50, 50))
+player_injured_img.fill((255, 128, 128))
+
+# 加载按钮图像
+button_img = pygame.Surface((100, 50))
+button_img.fill((128, 128, 128))
+
+# 玩家飞机初始位置
+player_x = screen_width // 2 - 25
+player_y = screen_height - 70
+
+# 玩家初始血量
+player_health = 100
+
+# 玩家飞机移动速度
+player_speed = 5
+
+# 创建敌机
+enemy_img = pygame.Surface((30, 30))
+enemy_img.fill((0, 255, 0))
+enemies = []
+enemy_speed = 3
+
+# 控制飞机受伤状态的计时器
+blink_timer = 0
+blink_interval = 200  # 闪烁间隔时间（毫秒）
+
+# 游戏时钟
+clock = pygame.time.Clock()
+
+# 游戏结束标志
+game_over = False
+
+# 游戏再来一局按钮
+play_again = False
+button_rect = pygame.Rect(screen_width // 2 - 50, screen_height // 2, 100, 50)
+
+# 游戏主循环
+while not game_over:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            game_over = True
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if play_again and button_rect.collidepoint(event.pos):
+                # 再来一局
+                player_health = 100
+                enemies.clear()
+                play_again = False
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT] and player_x > 0:
+        player_x -= player_speed
+    if keys[pygame.K_RIGHT] and player_x < screen_width - 50:
+        player_x += player_speed
+
+    # 更新敌机位置
+    for enemy in enemies:
+        enemy.y += enemy_speed
+        if enemy.y > screen_height:
+            enemies.remove(enemy)
+
+    # 生成新的敌机
+    if random.randint(0, 100) < 5:
+        enemy_x = random.randint(0, screen_width - 30)
+        enemy_y = 0
+        enemies.append(pygame.Rect(enemy_x, enemy_y, 30, 30))
+
+    # 碰撞检测
+    player_rect = pygame.Rect(player_x, player_y, 50, 50)
+    for enemy in enemies:
+        if player_rect.colliderect(enemy):
+            # 飞机受伤效果
+            blink_timer = pygame.time.get_ticks()  # 记录当前时间
+            player_health -= 20
+            enemies.remove(enemy)
+
+    # 渲染画面
+    screen.fill(BLACK)
+
+    if not play_again:
+        # 控制飞机显示和受伤效果
+        if pygame.time.get_ticks() - blink_timer > blink_interval:
+            screen.blit(player_normal_img, (player_x, player_y))
+        else:
+            screen.blit(player_injured_img, (player_x, player_y))
+
+        # 绘制血条
+        pygame.draw.rect(screen, RED, (player_x, player_y - 10, player_health / 100 * 50, 5))
+
+        for enemy in enemies:
+            pygame.draw.rect(screen, (0, 255, 0), enemy)
+    else:
+        # 显示 "Game Over" 文字和 "再来一局" 按钮
+        font = pygame.font.Font(None, 48)
+        game_over_text = font.render("Game Over", True, WHITE)
+        screen.blit(game_over_text, (screen_width // 2 - game_over_text.get_width() // 2, screen_height // 2 - 50))
+        pygame.draw.rect(screen, WHITE, button_rect)
+        button_text = font.render("再来一局", True, BLACK)
+        screen.blit(button_text, (screen_width // 2 - button_text.get_width() // 2, screen_height // 2))
+
+    pygame.display.flip()
+
+    # 控制帧率
+    clock.tick(60)
+
+    # 判断玩家生命值
+    if player_health <= 0:
+        play_again = True
+
+# 游戏结束，退出pygame
+pygame.quit()
